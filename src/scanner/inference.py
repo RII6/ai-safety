@@ -19,10 +19,11 @@ def empty_cache(device: str) -> None:
 
 
 class Model:
-    def __init__(self, checkpoint: str, device: str = None):
+    def __init__(self, checkpoint: str, device: str = None, dtype=None):
         self.device = device or pick_device()
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        dtype = torch.float32 if self.device == "cpu" else "auto"
+        if dtype is None:
+            dtype = torch.float32 if self.device == "cpu" else "auto"
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint, dtype=dtype).to(self.device)
         self.model.eval()
 

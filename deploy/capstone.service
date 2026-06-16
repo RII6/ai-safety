@@ -1,0 +1,23 @@
+[Unit]
+Description=LLM Safety Scanner (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=capstone
+WorkingDirectory=/opt/capstone
+Environment=HF_HOME=/opt/capstone/.hf
+Environment=OMP_NUM_THREADS=2
+Environment=SCAN_DEVICE=cpu
+Environment=SCAN_DTYPE=bfloat16
+Environment=SCAN_SAMPLE=25
+ExecStart=/opt/capstone/.venv/bin/uvicorn app.server:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+
+# Memory guard: kill the service before it takes the whole 2 GB box down.
+MemoryMax=1500M
+MemorySwapMax=512M
+
+[Install]
+WantedBy=multi-user.target

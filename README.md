@@ -76,3 +76,39 @@ module's summary plus the verdict. A correct scanner must separate them.
 
 Windows note: an NVIDIA GPU is picked up automatically as CUDA; without a GPU it falls
 back to CPU (correct, just slower — use `--sample` for iteration).
+
+## Web app
+
+A single-page UI: paste a Hugging Face repo, get the verdict plus a plain-language
+explanation of each metric. The scan runs live, so model size is capped for the
+target VM.
+
+```bash
+uv run uvicorn app.server:app --reload --port 8000   # http://localhost:8000
+```
+
+Knobs (env vars): `SCAN_SAMPLE` (per-class prompts, default 25), `SCAN_MAX_PARAMS`
+(reject larger models before download, default 400M), `SCAN_DTYPE` (default
+`bfloat16`), `SCAN_DEVICE` (default `cpu`). One scan runs at a time; reports cache to
+`reports/`.
+
+## Deploy (2 GB VM)
+
+Sized for ~1.5 GB usable RAM. torch (CPU) ~0.5 GB + FastAPI ~0.12 GB leaves the rest
+for weights, so the app caps model size and serializes scans.
+
+```bash
+# swap as a safety net
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+
+# install (CPU-only torch keeps it lean)
+uv venv && uv pip install torch --index-url https://download.pytorch.org/whl/cpu && uv sync
+
+# run under systemd (MemoryMax caps a runaway scan)
+sudo cp deploy/capstone.service /etc/systemd/system/
+sudo systemctl enable --now capstone
+```
+
+`deploy/capstone.service` sets `MemoryMax=1500M`. Put nginx/caddy in front for TLS,
+or expose port 8000 directly for a bare MVP.

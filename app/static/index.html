@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Safety Scanner</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Internal-State LLM Safety Scanner</h1>
+    <p class="sub">Paste a Hugging Face model repo and get a deploy-or-not verdict from the model's internal state.</p>
+  </header>
+
+  <main>
+    <form id="scan-form">
+      <input id="repo" type="text" placeholder="owner/model — e.g. HuggingFaceTB/SmolLM2-360M-Instruct" autocomplete="off" />
+      <button id="scan-btn" type="submit">Scan</button>
+    </form>
+    <p class="hint">Runs on a 2 GB VM, so the model size is capped. Small instruct models work best.</p>
+
+    <div id="status" class="status" hidden></div>
+    <section id="result" hidden></section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
