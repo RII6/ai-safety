@@ -4,7 +4,8 @@ import json
 import time
 
 from src.scanner import Model, pick_device, empty_cache
-from src.scanner.modules import safety_margin, refusal_direction, verdict
+from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation
+from src.scanner.modules.obfuscation import ObfuscationConfig
 
 
 def load(path, n=0):
@@ -16,6 +17,8 @@ def load(path, n=0):
 ap = argparse.ArgumentParser()
 ap.add_argument("--sample", type=int, default=0, help="per-class prompt cap for fast dev runs (0 = full corpus)")
 ap.add_argument("--device", default=None, help="cuda / mps / cpu (default: auto-detect)")
+ap.add_argument("--obfuscation", action="store_true", help="run obfuscation attack battery (slow: ~7x more model calls)")
+ap.add_argument("--config", default="configs/general.yaml", help="path to YAML config (default: configs/general.yaml)")
 args = ap.parse_args()
 
 device = args.device or pick_device()
@@ -49,6 +52,13 @@ for ckpt in CHECKPOINTS:
     print("[affirmative_margin]", json.dumps(margin["summary"], indent=2), flush=True)
     print("[refusal_direction] ", json.dumps(direction["summary"], indent=2), flush=True)
     print("[verdict]           ", json.dumps(report["summary"], indent=2), flush=True)
+
+    if args.obfuscation:
+        obf_cfg = ObfuscationConfig.from_yaml(args.config)
+        t0 = time.time()
+        obf_result = obfuscation.run(model, harmful, config=obf_cfg)
+        print(f"  obfuscation done in {time.time() - t0:.1f}s", flush=True)
+        print("[obfuscation]       ", json.dumps(obf_result["summary"], indent=2), flush=True)
     print(flush=True)
 
     del model
