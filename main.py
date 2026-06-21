@@ -8,28 +8,36 @@ from src.scanner.modules import safety_margin, refusal_direction, verdict, obfus
 
 from src.scanner.modules.obfuscation import ObfuscationConfig
 from src.scanner.modules.sampling_stability import SamplingStabilityConfig
-from src.scanner.modules.prompt_injection import PromptInjectionConfig   # ← Новый импорт
+from src.scanner.modules.prompt_injection import PromptInjectionConfig   # ← Новый модуль
 
 
-def load(path, n=0):
+def load(path: str, n: int = 0):
+    """Load prompts from jsonl file."""
     with open(path, encoding="utf-8") as f:
         prompts = [json.loads(line)["prompt"] for line in f if line.strip()]
     return prompts[:n] if n else prompts
 
 
-ap = argparse.ArgumentParser()
-ap.add_argument("--sample", type=int, default=0, help="per-class prompt cap for fast dev runs (0 = full corpus)")
-ap.add_argument("--device", default=None, help="cuda / mps / cpu (default: auto-detect)")
-ap.add_argument("--obfuscation", action="store_true", help="run obfuscation attack battery (slow: ~7x more model calls)")
-ap.add_argument("--sampling", action="store_true", help="run sampling stability analysis (free: derived from safety_margin logits)")
-ap.add_argument("--injection", action="store_true", help="run prompt injection detection (one + multi-turn)")  # ← Новый флаг
-ap.add_argument("--config", default="configs/general.yaml", help="path to YAML config (default: configs/general.yaml)")
+ap = argparse.ArgumentParser(description="Internal-State LLM Safety Scanner")
+ap.add_argument("--sample", type=int, default=0,
+                help="per-class prompt cap for fast dev runs (0 = full corpus)")
+ap.add_argument("--device", default=None,
+                help="cuda / mps / cpu (default: auto-detect)")
+ap.add_argument("--obfuscation", action="store_true",
+                help="run obfuscation attack battery")
+ap.add_argument("--sampling", action="store_true",
+                help="run sampling stability analysis")
+ap.add_argument("--injection", action="store_true",
+                help="run prompt injection detection (one + multi-turn)")  # ← Новый флаг
+ap.add_argument("--config", default="configs/general.yaml",
+                help="path to YAML config (default: configs/general.yaml)")
 
 args = ap.parse_args()
 
 device = args.device or pick_device()
 harmful = load("data/corpus/harmful.jsonl", args.sample)
 benign = load("data/corpus/benign.jsonl", args.sample)
+
 print(f"corpus: {len(harmful)} harmful / {len(benign)} benign | device={device}", flush=True)
 
 CHECKPOINTS = [
@@ -40,14 +48,15 @@ CHECKPOINTS = [
 
 for ckpt in CHECKPOINTS:
     print("=" * 70, flush=True)
-    print(ckpt, flush=True)
+    print(f"Model: {ckpt}", flush=True)
     t0 = time.time()
     model = Model(ckpt, device)
     print(f"  loaded in {time.time() - t0:.1f}s", flush=True)
 
+    # === Core modules ===
     t0 = time.time()
     margin = safety_margin.run(model, harmful, benign)
-    print(f"  affirmative_margin done in {time.time() - t0:.1f}s", flush=True)
+    print(f"  safety_margin done in {time.time() - t0:.1f}s", flush=True)
 
     t0 = time.time()
     direction = refusal_direction.run(model, harmful, benign)
@@ -55,10 +64,11 @@ for ckpt in CHECKPOINTS:
 
     report = verdict.compute(margin, direction)
 
-    print("[affirmative_margin]", json.dumps(margin["summary"], indent=2), flush=True)
-    print("[refusal_direction] ", json.dumps(direction["summary"], indent=2), flush=True)
-    print("[verdict]           ", json.dumps(report["summary"], indent=2), flush=True)
+    print("[safety_margin]    ", json.dumps(margin["summary"], indent=2), flush=True)
+    print("[refusal_direction]", json.dumps(direction["summary"], indent=2), flush=True)
+    print("[verdict]          ", json.dumps(report["summary"], indent=2), flush=True)
 
+    # === Additional modules ===
     if args.sampling:
         ss_cfg = SamplingStabilityConfig.from_yaml(args.config)
         ss_result = sampling_stability.from_margins(margin, config=ss_cfg)
@@ -69,17 +79,19 @@ for ckpt in CHECKPOINTS:
         t0 = time.time()
         obf_result = obfuscation.run(model, harmful, config=obf_cfg)
         print(f"  obfuscation done in {time.time() - t0:.1f}s", flush=True)
-        print("[obfuscation]       ", json.dumps(obf_result["summary"], indent=2), flush=True)
+        print("[obfuscation]      ", json.dumps(obf_result["summary"], indent=2), flush=True)
 
+    # === Prompt Injection Module ===
     if args.injection:
         inj_cfg = PromptInjectionConfig.from_yaml(args.config)
         t0 = time.time()
-        inj_result = prompt_injection.run(model, harmful, config=inj_cfg)  # ← Запуск
+        inj_result = prompt_injection.run(model, harmful, config=inj_cfg)  # ← Запуск твоего модуля
         print(f"  prompt_injection done in {time.time() - t0:.1f}s", flush=True)
-        print("[prompt_injection]  ", json.dumps(inj_result["summary"], indent=2), flush=True)
+        print("[prompt_injection] ", json.dumps(inj_result["summary"], indent=2), flush=True)
 
     print(flush=True)
 
+    # Cleanup
     del model
     gc.collect()
     empty_cache(device)
