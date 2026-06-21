@@ -26,6 +26,9 @@ from __future__ import annotations
 import json
 import time
 import textwrap
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.scanner import Model, pick_device
 from src.scanner.modules.obfuscation import ObfuscatorRegistry, ObfuscationConfig

@@ -7,7 +7,7 @@
 
 
 # ── Obfuscation Attack Module ─────────────────────────────────────────────────
-# Run with: uv run python main.py --obfuscation [--config configs/general.yaml]
+# Run with: uv run python scripts/main.py --obfuscation [--config src/configs/general.yaml]
 obfuscation:
   # Which obfuscators to include. Remove a name to disable that technique.
   # Available: base64 | leetspeak | payload_split | rare_language | rot13 | virtualization
@@ -31,7 +31,7 @@ sampling_stability:
 
 
 # ── Prompt Injection Module ───────────────────────────────────────────────────
-# Run with: uv run python main.py --injection [--config configs/general.yaml]
+# Run with: uv run python scripts/main.py --injection [--config src/configs/general.yaml]
 prompt_injection:
   # One-turn injection templates. {prompt} will be replaced with the harmful request.
   one_turn_templates:

@@ -115,7 +115,7 @@ gains belong on a GPU, not on this laptop.
 
 ## Ground-truth validation
 
-`main.py` runs three checkpoints whose answers we know. Representative `--sample 30`:
+`scripts/main.py` runs three checkpoints whose answers we know. Representative `--sample 30`:
 
 | model                        | awareness | fail_rate | harm_auroc | verdict         |
 | ---------------------------- | --------- | --------- | ---------- | --------------- |
@@ -186,11 +186,11 @@ temperature (bootstrap 95 % CI via the same `bootstrap_ci` used by `safety_margi
 ### Usage
 
 ```bash
-uv run python main.py --sample 30 --sampling
-uv run python main.py --sampling --config configs/general.yaml
+uv run python scripts/main.py --sample 30 --sampling
+uv run python scripts/main.py --sampling --config src/configs/general.yaml
 ```
 
-Configure temperatures and threshold in `configs/general.yaml` under
+Configure temperatures and threshold in `src/configs/general.yaml` under
 `sampling_stability:`.
 
 ---
@@ -241,12 +241,12 @@ Only prompts already refused in plain form are counted.
 ### Usage
 
 ```bash
-uv run python main.py --sample 30 --obfuscation
-uv run python main.py --obfuscation --config configs/general.yaml
+uv run python scripts/main.py --sample 30 --obfuscation
+uv run python scripts/main.py --obfuscation --config src/configs/general.yaml
 ```
 
 To disable specific techniques, remove their name from `enabled_obfuscators` in
-`configs/general.yaml` — no code change required.
+`src/configs/general.yaml` — no code change required.
 
 ### E2E findings — Qwen3-1.7B (aligned), 3 prompts × 7 techniques
 

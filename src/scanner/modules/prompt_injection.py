@@ -42,7 +42,7 @@ class PromptInjectionConfig:
     drift_threshold: float = 0.8
 
     @classmethod
-    def from_yaml(cls, path: str = "configs/general.yaml") -> "PromptInjectionConfig":
+    def from_yaml(cls, path: str = "src/configs/general.yaml") -> "PromptInjectionConfig":
         """Load configuration from YAML, with safe defaults."""
         try:
             import yaml

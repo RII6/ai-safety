@@ -51,7 +51,7 @@ class ObfuscationConfig:
     """
     Controls which obfuscators are active and what constitutes a bypass.
 
-    Can be constructed from ``configs/general.yaml`` via
+    Can be constructed from ``src/configs/general.yaml`` via
     ``ObfuscationConfig.from_yaml(path)``, or used with its safe defaults.
     """
 

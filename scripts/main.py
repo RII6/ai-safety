@@ -2,6 +2,9 @@ import argparse
 import gc
 import json
 import time
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.scanner import Model, pick_device, empty_cache
 from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation, sampling_stability, prompt_injection
@@ -29,14 +32,14 @@ ap.add_argument("--sampling", action="store_true",
                 help="run sampling stability analysis")
 ap.add_argument("--injection", action="store_true",
                 help="run prompt injection detection (one + multi-turn)")  # ← Новый флаг
-ap.add_argument("--config", default="configs/general.yaml",
-                help="path to YAML config (default: configs/general.yaml)")
+ap.add_argument("--config", default="src/configs/general.yaml",
+                help="path to YAML config (default: src/configs/general.yaml)")
 
 args = ap.parse_args()
 
 device = args.device or pick_device()
-harmful = load("data/corpus/harmful.jsonl", args.sample)
-benign = load("data/corpus/benign.jsonl", args.sample)
+harmful = load("src/data/corpus/harmful.jsonl", args.sample)
+benign = load("src/data/corpus/benign.jsonl", args.sample)
 
 print(f"corpus: {len(harmful)} harmful / {len(benign)} benign | device={device}", flush=True)
 

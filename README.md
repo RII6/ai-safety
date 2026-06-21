@@ -20,7 +20,7 @@ For each checkpoint the scanner emits a verdict with a diagnosis and a recommend
 | `do_not_deploy`            | complies on harmful prompts                                       |
 | `inconclusive`             | the behavioral probe carries no safety signal (e.g. a base model) |
 
-See [`safety_docs.md`](safety_docs.md) for the metrics behind the verdict and the
+See [`safety_docs.md`](docs/safety_docs.md) for the metrics behind the verdict and the
 design decisions.
 
 ## Modules
@@ -53,11 +53,11 @@ uv pip install torch --index-url https://download.pytorch.org/whl/cu124
 
 ## Build the corpus
 
-The corpus (`data/corpus/{harmful,benign}.jsonl`) ships pre-built. To regenerate or
+The corpus (`src/data/corpus/{harmful,benign}.jsonl`) ships pre-built. To regenerate or
 resize it from public datasets (AdvBench harmful behaviors + Alpaca instructions):
 
 ```bash
-uv run python build_corpus.py --n 500
+uv run python scripts/build_corpus.py --n 500
 ```
 
 Both classes are imperative-style, which controls for a prompt-format confound.
@@ -65,12 +65,12 @@ Both classes are imperative-style, which controls for a prompt-format confound.
 ## Run
 
 ```bash
-uv run python main.py                 # full corpus (500/500), full run is slow on CPU
-uv run python main.py --sample 30     # fast dev run, 30 prompts per class
-uv run python main.py --device cpu    # force a backend (default: auto-detect)
+uv run python scripts/main.py                 # full corpus (500/500), full run is slow on CPU
+uv run python scripts/main.py --sample 30     # fast dev run, 30 prompts per class
+uv run python scripts/main.py --device cpu    # force a backend (default: auto-detect)
 ```
 
-`main.py` runs three ground-truth checkpoints — an aligned model, an abliterated one
+`scripts/main.py` runs three ground-truth checkpoints — an aligned model, an abliterated one
 (safety surgically removed), and a base one (never safety-tuned) — and prints each
 module's summary plus the verdict. A correct scanner must separate them.
 
@@ -84,13 +84,23 @@ explanation of each metric. The scan runs live, so model size is capped for the
 target VM.
 
 ```bash
-uv run uvicorn app.server:app --reload --port 8000   # http://localhost:8000
+uv run uvicorn src.app.server:app --reload --port 8000   # http://localhost:8000
 ```
 
 Knobs (env vars): `SCAN_SAMPLE` (per-class prompts, default 25), `SCAN_MAX_PARAMS`
 (reject larger models before download, default 400M), `SCAN_DTYPE` (default
 `bfloat16`), `SCAN_DEVICE` (default `cpu`). One scan runs at a time; reports cache to
 `reports/`.
+
+## Docker (Recommended)
+
+The easiest way to run the entire application (Frontend, Backend, and PostgreSQL) is using Docker Compose. It builds the frontend, sets up the Python environment, and runs the database for you.
+
+```bash
+docker compose up -d
+```
+
+The web app will be available at `http://localhost`. Models are cached in a Docker volume so they won't be redownloaded on restart.
 
 ## Deploy (2 GB VM)
 
@@ -111,4 +121,4 @@ sudo systemctl enable --now capstone
 ```
 
 `deploy/capstone.service` sets `MemoryMax=1500M`. Put nginx/caddy in front for TLS,
-or expose port 8000 directly for a bare MVP.
+or expose port 80 directly for a bare MVP.
