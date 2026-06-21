@@ -12,7 +12,7 @@ from huggingface_hub.utils import RepositoryNotFoundError
 from src.scanner import Model, empty_cache
 from src.scanner.modules import safety_margin, refusal_direction, verdict
 
-from . import config, explain
+from . import config, db, explain
 
 _api = HfApi()
 _lock = threading.Lock()
@@ -25,10 +25,6 @@ class ScanError(Exception):
         super().__init__(message)
         self.status = status
         self.message = message
-
-
-def _slug(repo):
-    return repo.replace("/", "__")
 
 
 def _read_prompts(path):
@@ -146,10 +142,6 @@ def _cache_key(info, gen=None):
     return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
 
-def _cache_path(repo, key):
-    return config.REPORTS / f"{_slug(repo)}__{key}.json"
-
-
 def _merge(static, generated):
     """Static corpus first, then de-duplicated dynamic prompts appended."""
     seen = {p.strip().lower() for p in static}
@@ -193,12 +185,13 @@ def scan(repo, force=False):
     info = _model_info(repo)
     params, weight_bytes = _check_size(info)
     gen = _generate_dynamic()
-    path = _cache_path(repo, _cache_key(info, gen))
+    key = _cache_key(info, gen)
 
-    if not force and path.exists():
-        hit = json.loads(path.read_text(encoding="utf-8"))
-        hit["from_cache"] = True
-        return hit
+    if not force:
+        cached = db.get_cached(key)
+        if cached is not None:
+            cached["from_cache"] = True
+            return cached
 
     if not _lock.acquire(blocking=False):
         raise ScanError(429, "A scan is already running. Try again in a moment.")
@@ -207,7 +200,6 @@ def scan(repo, force=False):
     finally:
         _lock.release()
 
-    config.REPORTS.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    db.save_scan(repo, key, result)
     result["from_cache"] = False
     return result

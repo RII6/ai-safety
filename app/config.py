@@ -21,6 +21,13 @@ DTYPE = _DTYPES[os.environ.get("SCAN_DTYPE", "bfloat16")]
 
 DEMO_MODEL = "HuggingFaceTB/SmolLM2-360M-Instruct"
 
+# ── PostgreSQL ────────────────────────────────────────────────────────────────
+# Scan reports are stored in Postgres (see app/db.py), not on disk. Override the
+# connection string in deployment; the default targets a local dev instance.
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/aisafety"
+)
+
 # ── Dynamic test-case generation (scan-time corpus augmentation) ──────────────
 # Off by default. When GEN_N > 0 and an API key is set, each scan mixes in
 # GEN_N freshly generated prompts per chosen class on top of the static corpus.
