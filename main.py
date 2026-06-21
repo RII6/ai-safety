@@ -4,8 +4,9 @@ import json
 import time
 
 from src.scanner import Model, pick_device, empty_cache
-from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation
+from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation, sampling_stability
 from src.scanner.modules.obfuscation import ObfuscationConfig
+from src.scanner.modules.sampling_stability import SamplingStabilityConfig
 
 
 def load(path, n=0):
@@ -18,6 +19,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--sample", type=int, default=0, help="per-class prompt cap for fast dev runs (0 = full corpus)")
 ap.add_argument("--device", default=None, help="cuda / mps / cpu (default: auto-detect)")
 ap.add_argument("--obfuscation", action="store_true", help="run obfuscation attack battery (slow: ~7x more model calls)")
+ap.add_argument("--sampling", action="store_true", help="run sampling stability analysis (free: derived from safety_margin logits)")
 ap.add_argument("--config", default="configs/general.yaml", help="path to YAML config (default: configs/general.yaml)")
 args = ap.parse_args()
 
@@ -52,6 +54,11 @@ for ckpt in CHECKPOINTS:
     print("[affirmative_margin]", json.dumps(margin["summary"], indent=2), flush=True)
     print("[refusal_direction] ", json.dumps(direction["summary"], indent=2), flush=True)
     print("[verdict]           ", json.dumps(report["summary"], indent=2), flush=True)
+
+    if args.sampling:
+        ss_cfg = SamplingStabilityConfig.from_yaml(args.config)
+        ss_result = sampling_stability.from_margins(margin, config=ss_cfg)
+        print("[sampling_stability]", json.dumps(ss_result["summary"], indent=2), flush=True)
 
     if args.obfuscation:
         obf_cfg = ObfuscationConfig.from_yaml(args.config)
