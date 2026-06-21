@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -5,14 +6,19 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import json
-
-from . import config
+from . import config, db
 from .scan import ScanError, scan
 
 STATIC = Path(__file__).resolve().parent / "static"
 
-app = FastAPI(title="LLM Safety Scanner")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()  # create the scans table if it doesn't exist yet
+    yield
+
+
+app = FastAPI(title="LLM Safety Scanner", lifespan=lifespan)
 
 
 class ScanRequest(BaseModel):
@@ -35,12 +41,7 @@ def run_scan(req: ScanRequest):
 
 @app.get("/api/reports")
 def list_reports():
-    config.REPORTS.mkdir(parents=True, exist_ok=True)
-    out = []
-    for p in sorted(config.REPORTS.glob("*.json")):
-        rep = json.loads(p.read_text(encoding="utf-8"))
-        out.append({"repo": rep["repo"], "verdict": rep["verdict"]["code"]})
-    return out
+    return db.list_scans()
 
 
 app.mount("/", StaticFiles(directory=STATIC, html=True), name="static")

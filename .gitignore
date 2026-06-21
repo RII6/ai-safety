@@ -11,3 +11,6 @@ wheels/
 
 # MacOS
 .DS_Store
+
+# Scan-time generated test cases (reproducible from seed; cached locally)
+data/corpus/generated/
