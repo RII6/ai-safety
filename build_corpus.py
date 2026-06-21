@@ -13,16 +13,9 @@ Both are imperative-style ("Write...", "Explain...", "Give..."), which controls
 for the prompt-format confound that contaminated the earlier questions-vs-
 imperatives split (see the refusal-direction / coupling notes).
 
-Optionally augments a class with model-generated test cases (see generate.py),
-turning the fixed corpus into one we can grow with our own dynamic cases. The
-generator model is never analysed — it only writes prompts. Needs an API key in
-the environment (GROQ_API_KEY or GEMINI_API_KEY).
-
 Usage:
-    uv run python build_corpus.py                        # default: 500 per class
+    uv run python build_corpus.py            # default: 500 per class
     uv run python build_corpus.py --n 1000
-    uv run python build_corpus.py --augment groq --aug-n 100               # +100 harmful
-    uv run python build_corpus.py --augment google --aug-n 100 --aug-class both
 """
 import argparse
 import csv
@@ -89,34 +82,10 @@ def build(path, fetched, n, seed):
     return len(existing), len(keep)
 
 
-def augment(path, provider, n, model, seed):
-    """Append n model-generated variants of the existing prompts; dedup; rewrite.
-
-    Existing prompts seed the generation, so new cases stay on-distribution.
-    Returns the number of fresh prompts actually added after de-duplication.
-    """
-    from generate import generate_variants  # lazy: only import openai when augmenting
-
-    existing = _read_existing(path)
-    fresh = generate_variants(existing, n=n, provider=provider, model=model, seed=seed)
-    merged = _dedup(existing + fresh)
-    path.write_text(
-        "".join(json.dumps({"prompt": p}, ensure_ascii=False) + "\n" for p in merged),
-        encoding="utf-8",
-    )
-    return len(merged) - len(existing)
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=500, help="prompts per class (0 = all available)")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--augment", choices=["groq", "google"], default=None,
-                    help="after building, append model-generated test cases via this provider")
-    ap.add_argument("--aug-n", type=int, default=0, help="how many prompts to generate per augmented class")
-    ap.add_argument("--aug-class", choices=["harmful", "benign", "both"], default="harmful",
-                    help="which class(es) to augment (default: harmful)")
-    ap.add_argument("--aug-model", default=None, help="override generator model id (else provider default / GEN_MODEL)")
     args = ap.parse_args()
 
     CORPUS.mkdir(parents=True, exist_ok=True)
@@ -128,15 +97,6 @@ def main():
     print("fetching Alpaca (benign)...", flush=True)
     b_old, b_new = build(BENIGN, load_alpaca(), args.n, args.seed)
     print(f"  benign:  {b_old} seed -> {b_new} total -> {BENIGN}", flush=True)
-
-    if args.augment and args.aug_n:
-        targets = {"harmful": HARMFUL, "benign": BENIGN}
-        if args.aug_class != "both":
-            targets = {args.aug_class: targets[args.aug_class]}
-        for name, path in targets.items():
-            print(f"augmenting {name} via {args.augment} (+{args.aug_n} requested)...", flush=True)
-            added = augment(path, args.augment, args.aug_n, args.aug_model, args.seed)
-            print(f"  {name}: +{added} new after dedup -> {path}", flush=True)
 
 
 if __name__ == "__main__":
