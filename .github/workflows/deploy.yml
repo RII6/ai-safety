@@ -1,0 +1,29 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e # Скрипт немедленно завершится, если любая команда вернет ошибку
+            
+            cd ~/ai-safety || exit 1
+            
+            echo "Pulling latest changes from main branch..."
+            git pull origin main
+            
+            echo "Rebuilding and restarting containers..."
+            docker compose up -d --build
+            
+            echo "Deployment successfully completed!"
