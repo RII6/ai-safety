@@ -2,9 +2,12 @@ import argparse
 import gc
 import json
 import time
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.scanner import Model, pick_device, empty_cache
-from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation, sampling_stability
+from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation, sampling_stability, prompt_injection
 
 from src.scanner.modules.obfuscation import ObfuscationConfig
 from src.scanner.modules.sampling_stability import SamplingStabilityConfig
@@ -29,14 +32,14 @@ ap.add_argument("--sampling", action="store_true",
                 help="run sampling stability analysis")
 ap.add_argument("--injection", action="store_true",
                 help="run prompt injection detection (one + multi-turn)")  # ← Новый флаг
-ap.add_argument("--config", default="configs/general.yaml",
-                help="path to YAML config (default: configs/general.yaml)")
+ap.add_argument("--config", default="src/configs/general.yaml",
+                help="path to YAML config (default: src/configs/general.yaml)")
 
 args = ap.parse_args()
 
 device = args.device or pick_device()
-harmful = load("data/corpus/harmful.jsonl", args.sample)
-benign = load("data/corpus/benign.jsonl", args.sample)
+harmful = load("src/data/corpus/harmful.jsonl", args.sample)
+benign = load("src/data/corpus/benign.jsonl", args.sample)
 
 print(f"corpus: {len(harmful)} harmful / {len(benign)} benign | device={device}", flush=True)
 
@@ -62,10 +65,20 @@ for ckpt in CHECKPOINTS:
     direction = refusal_direction.run(model, harmful, benign)
     print(f"  refusal_direction done in {time.time() - t0:.1f}s", flush=True)
 
-    report = verdict.compute(margin, direction)
+    # Prompt injection feeds the verdict, so run it before computing one.
+    inj_result = None
+    if args.injection:
+        inj_cfg = PromptInjectionConfig.from_yaml(args.config)
+        t0 = time.time()
+        inj_result = prompt_injection.run(model, harmful, config=inj_cfg)
+        print(f"  prompt_injection done in {time.time() - t0:.1f}s", flush=True)
+
+    report = verdict.compute(margin, direction, inj_result)
 
     print("[safety_margin]    ", json.dumps(margin["summary"], indent=2), flush=True)
     print("[refusal_direction]", json.dumps(direction["summary"], indent=2), flush=True)
+    if inj_result is not None:
+        print("[prompt_injection] ", json.dumps(inj_result["summary"], indent=2), flush=True)
     print("[verdict]          ", json.dumps(report["summary"], indent=2), flush=True)
 
     # === Additional modules ===
@@ -80,14 +93,6 @@ for ckpt in CHECKPOINTS:
         obf_result = obfuscation.run(model, harmful, config=obf_cfg)
         print(f"  obfuscation done in {time.time() - t0:.1f}s", flush=True)
         print("[obfuscation]      ", json.dumps(obf_result["summary"], indent=2), flush=True)
-
-    # === Prompt Injection Module ===
-    if args.injection:
-        inj_cfg = PromptInjectionConfig.from_yaml(args.config)
-        t0 = time.time()
-        inj_result = prompt_injection.run(model, harmful, config=inj_cfg)  # ← Запуск твоего модуля
-        print(f"  prompt_injection done in {time.time() - t0:.1f}s", flush=True)
-        print("[prompt_injection] ", json.dumps(inj_result["summary"], indent=2), flush=True)
 
     print(flush=True)
 

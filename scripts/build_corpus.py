@@ -30,7 +30,7 @@ from datasets import load_dataset
 # Canonical AdvBench behaviors from the GCG repo (ungated; the HF mirror is gated).
 ADVBENCH_CSV = "https://raw.githubusercontent.com/llm-attacks/llm-attacks/main/data/advbench/harmful_behaviors.csv"
 
-CORPUS = Path("data/corpus")
+CORPUS = Path("src/data/corpus")
 HARMFUL = CORPUS / "harmful.jsonl"
 BENIGN = CORPUS / "benign.jsonl"
 

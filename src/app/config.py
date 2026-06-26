@@ -15,7 +15,7 @@ import torch
 
 ROOT = Path(__file__).resolve().parent.parent
 CORPUS = ROOT / "data" / "corpus"
-REPORTS = ROOT / "reports"
+REPORTS = ROOT.parent / "reports"
 
 # Path to the YAML config; override with SCAN_CONFIG if needed.
 _CONFIG_PATH = Path(os.environ.get("SCAN_CONFIG", ROOT / "configs" / "general.yaml"))
