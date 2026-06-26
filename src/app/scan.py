@@ -40,12 +40,7 @@ def _load_corpus():
 
 
 def _generate_for_class(cls):
-    """Return GEN_N fresh prompts for *cls*, cached on disk by provider/class/n/seed.
-
-    Same (provider, class, n, seed) -> same prompts, so a scan is reproducible
-    and comparable; delete the cache file or bump SCAN_GEN_SEED for a new batch.
-    Any failure (no key, network, refusals) falls back to no extra prompts.
-    """
+    """Return GEN_N fresh prompts for *cls*, cached on disk by provider/class/n/seed."""
     config.GEN_CACHE.mkdir(parents=True, exist_ok=True)
     cache_file = config.GEN_CACHE / f"{config.GEN_PROVIDER}_{cls}_n{config.GEN_N}_seed{config.GEN_SEED}.jsonl"
     if cache_file.exists():
@@ -62,8 +57,8 @@ def _generate_for_class(cls):
             model=config.GEN_MODEL,
             seed=config.GEN_SEED,
         )
-    except Exception as e:  # never let generation break a scan
-        print(f"[scan] dynamic generation for '{cls}' failed, using static corpus: {e}", flush=True)
+    except Exception as e:
+        print(f"[scan] dynamic generation for '{cls}' failed: {e}", flush=True)
         return []
 
     cache_file.write_text(
@@ -74,7 +69,6 @@ def _generate_for_class(cls):
 
 
 def _generate_dynamic():
-    """Generate the scan-time prompt mix-in: {'harmful': [...], 'benign': [...]}."""
     if config.GEN_N <= 0:
         return {"harmful": [], "benign": []}
     classes = ["harmful", "benign"] if config.GEN_CLASS == "both" else [config.GEN_CLASS]
@@ -115,7 +109,6 @@ def _check_size(info):
 
 
 def _oid(sibling):
-    """Content id of a file: LFS sha256 for weight blobs, git blob id otherwise."""
     lfs = getattr(sibling, "lfs", None)
     if lfs is not None:
         sha = getattr(lfs, "sha256", None)
@@ -127,12 +120,6 @@ def _oid(sibling):
 
 
 def _cache_key(info, gen=None):
-    """Hash over weight-file contents plus the scan params that change the verdict.
-
-    Generated prompts are folded in (by content) so a dynamic scan stays
-    reproducible: same model + same generated set -> cache hit; a new set ->
-    a fresh report rather than a stale cached one.
-    """
     parts = sorted(
         f"{s.rfilename}:{_oid(s)}" for s in info.siblings if s.rfilename.endswith(_WEIGHT_EXT)
     )
@@ -144,7 +131,6 @@ def _cache_key(info, gen=None):
 
 
 def _merge(static, generated):
-    """Static corpus first, then de-duplicated dynamic prompts appended."""
     seen = {p.strip().lower() for p in static}
     extra = [p for p in generated if p.strip().lower() not in seen]
     return static + extra
@@ -162,8 +148,14 @@ def _run_scan(repo, params, weight_bytes, gen, modules):
 
         injection_result = None
         if "prompt_injections" in modules:
-            inj_cfg = PromptInjectionConfig.from_yaml()
-            injection_result = run_injection(model, harmful, config=inj_cfg)
+            print("[DEBUG] Running prompt_injection module...", flush=True)
+            try:
+                inj_cfg = PromptInjectionConfig.from_yaml()
+                injection_result = run_injection(model, harmful, config=inj_cfg)
+                print("[DEBUG] prompt_injection completed", flush=True)
+            except Exception as e:
+                print(f"[ERROR] prompt_injection failed: {e}", flush=True)
+                injection_result = None
 
     finally:
         del model
@@ -182,6 +174,7 @@ def _run_scan(repo, params, weight_bytes, gen, modules):
         "elapsed_s": round(time.time() - t0, 1),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+
     return explain.build(repo, margin, direction, report, meta, injection=injection_result)
 
 

@@ -24,7 +24,7 @@ app = FastAPI(title="LLM Safety Scanner", lifespan=lifespan)
 class ScanRequest(BaseModel):
     repo: str
     force: bool = False
-    modules: list[str] = ["general"]   # <-- добавлено поле modules
+    modules: list[str] = ["general"]
 
 
 @app.get("/api/health")

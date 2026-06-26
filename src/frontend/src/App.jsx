@@ -49,7 +49,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           repo: trimmedRepo,
-          force: true,
+          force: false,
           modules: selectedModules
         }),
       });
