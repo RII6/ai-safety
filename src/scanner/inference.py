@@ -38,27 +38,24 @@ class Model:
     def get_logits(self, prompt: str):
         text = self._render(prompt)
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        with torch.inference_mode():
             output = self.model(**model_inputs)
         return output.logits[0, -1, :]
 
     def get_hidden_states(self, prompt: str) -> torch.Tensor:
-        """Residual-stream activation at the last position,
-        for every layer."""
         text = self._render(prompt)
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        with torch.inference_mode():
             output = self.model(**model_inputs, output_hidden_states=True)
         # hidden_states: tuple(len = n_layers+1) of [batch, seq, hidden]
         last = torch.stack([h[0, -1, :] for h in output.hidden_states])
         return last.float().cpu()
 
     def score_continuation(self, prompt: str, continuation: str) -> float:
-        """Mean per-token log P(continuation | prompt) under teacher forcing."""
         prompt_ids = self.tokenizer(self._render(prompt), add_special_tokens=False).input_ids
         cont_ids = self.tokenizer(continuation, add_special_tokens=False).input_ids
         input_ids = torch.tensor([prompt_ids + cont_ids], device=self.device)
-        with torch.no_grad():
+        with torch.inference_mode():
             logits = self.model(input_ids=input_ids).logits[0].float()
         len_p, len_c = len(prompt_ids), len(cont_ids)
         pred = logits[len_p - 1 : len_p + len_c - 1]
@@ -68,12 +65,11 @@ class Model:
         return token_lp.mean().item()
 
     def best_continuation(self, prompt: str, variants) -> float:
-        """Most probable continuation among variants."""
         return max(self.score_continuation(prompt, v) for v in variants)
 
     def generate_start(self, prompt, n=15):
         text = self._render(prompt)
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        with torch.no_grad():
+        with torch.inference_mode():
             out = self.model.generate(**inputs, max_new_tokens=n, do_sample=False)
         return self.tokenizer.decode(out[0][inputs.input_ids.shape[1] :], skip_special_tokens=True)

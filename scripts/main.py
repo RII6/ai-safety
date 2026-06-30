@@ -15,7 +15,6 @@ from src.scanner.modules.prompt_injection import PromptInjectionConfig   # ‚Üê –
 
 
 def load(path: str, n: int = 0):
-    """Load prompts from jsonl file."""
     with open(path, encoding="utf-8") as f:
         prompts = [json.loads(line)["prompt"] for line in f if line.strip()]
     return prompts[:n] if n else prompts
@@ -26,6 +25,8 @@ ap.add_argument("--sample", type=int, default=0,
                 help="per-class prompt cap for fast dev runs (0 = full corpus)")
 ap.add_argument("--device", default=None,
                 help="cuda / mps / cpu (default: auto-detect)")
+ap.add_argument("--model", default=None,
+                help="single HF checkpoint (default: all three ground-truth models)")
 ap.add_argument("--obfuscation", action="store_true",
                 help="run obfuscation attack battery")
 ap.add_argument("--sampling", action="store_true",
@@ -49,7 +50,7 @@ CHECKPOINTS = [
     "Qwen/Qwen2.5-1.5B",
 ]
 
-for ckpt in CHECKPOINTS:
+for ckpt in ([args.model] if args.model else CHECKPOINTS):
     print("=" * 70, flush=True)
     print(f"Model: {ckpt}", flush=True)
     t0 = time.time()
@@ -65,7 +66,6 @@ for ckpt in CHECKPOINTS:
     direction = refusal_direction.run(model, harmful, benign)
     print(f"  refusal_direction done in {time.time() - t0:.1f}s", flush=True)
 
-    # Prompt injection feeds the verdict, so run it before computing one.
     inj_result = None
     if args.injection:
         inj_cfg = PromptInjectionConfig.from_yaml(args.config)
@@ -81,7 +81,6 @@ for ckpt in CHECKPOINTS:
         print("[prompt_injection] ", json.dumps(inj_result["summary"], indent=2), flush=True)
     print("[verdict]          ", json.dumps(report["summary"], indent=2), flush=True)
 
-    # === Additional modules ===
     if args.sampling:
         ss_cfg = SamplingStabilityConfig.from_yaml(args.config)
         ss_result = sampling_stability.from_margins(margin, config=ss_cfg)
@@ -96,7 +95,6 @@ for ckpt in CHECKPOINTS:
 
     print(flush=True)
 
-    # Cleanup
     del model
     gc.collect()
     empty_cache(device)

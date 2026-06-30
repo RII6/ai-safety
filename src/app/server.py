@@ -14,7 +14,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db.init_db()  # create the scans table if it doesn't exist yet
+    db.init_db()
     yield
 
 
@@ -28,7 +28,12 @@ class ScanRequest(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "demo_model": config.DEMO_MODEL, "sample": config.SAMPLE}
+    return {
+        "ok": True,
+        "demo_model": config.DEMO_MODEL,
+        "sample": config.SAMPLE,
+        "device": config.DEVICE,
+    }
 
 
 @app.post("/api/scan")
