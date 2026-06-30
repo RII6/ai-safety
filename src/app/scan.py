@@ -12,6 +12,7 @@ from huggingface_hub.utils import RepositoryNotFoundError
 from src.scanner import Model, empty_cache
 from src.scanner.modules import safety_margin, refusal_direction, verdict
 from src.scanner.modules import obfuscation
+from src.scanner.modules import gcg_adversarial
 from src.scanner.modules.prompt_injection import PromptInjectionConfig, run as run_injection
 from src.scanner.modules import sampling_stability
 
@@ -179,6 +180,20 @@ def _run_scan(repo, params, weight_bytes, gen, modules):
             except Exception as e:
                 print(f"[ERROR] sampling_stability failed: {e}", flush=True)
                 sampling_result = None
+
+        gcg_result = None
+        if "gcg" in modules:
+            try:
+                gcg_result = gcg_adversarial.run(
+                    model, harmful,
+                    config=gcg_adversarial.GCGAdversarialConfig.from_yaml(
+                        str(config.ROOT / "configs" / "general.yaml")
+                    )
+                )
+                print("[DEBUG] gcg_adversarial completed", flush=True)
+            except Exception as e:
+                print(f"[ERROR] gcg_adversarial failed: {e}", flush=True)
+                gcg_result = None
     finally:
         del model
         gc.collect()
@@ -198,7 +213,8 @@ def _run_scan(repo, params, weight_bytes, gen, modules):
     }
 
     return explain.build(repo, margin, direction, report, meta,
-    injection=injection_result, obfuscation=obfuscation_result, sampling=sampling_result)
+    injection=injection_result, obfuscation=obfuscation_result, sampling=sampling_result,
+    gcg=gcg_result)
 
 
 def scan(repo, force=False, modules=None):

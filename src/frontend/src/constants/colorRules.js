@@ -10,4 +10,5 @@ export const colorRules = {
     cohens_d: { type: 'cohens_d', thresholds: [0.80, 0.50], colors: ['status-success', 'status-warning', 'status-danger'] },
     severity: { type: 'severity', mapping: { 'low': 'status-success', 'medium': 'status-warning', 'high': 'status-danger' } },
     worst_sampling_fail_rate: { type: 'percentage', thresholds: [0.10, 0.30], colors: ['status-success', 'status-warning', 'status-danger']},
+    attack_success_rate: { type: 'percentage', thresholds: [0.10, 0.30], colors: ['status-success', 'status-warning', 'status-danger']},
 };

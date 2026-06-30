@@ -7,11 +7,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.scanner import Model, pick_device, empty_cache
-from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation, sampling_stability, prompt_injection
+from src.scanner.modules import safety_margin, refusal_direction, verdict, obfuscation, sampling_stability, prompt_injection, gcg_adversarial
 
 from src.scanner.modules.obfuscation import ObfuscationConfig
 from src.scanner.modules.sampling_stability import SamplingStabilityConfig
 from src.scanner.modules.prompt_injection import PromptInjectionConfig   # ← Новый модуль
+from src.scanner.modules.gcg_adversarial import GCGAdversarialConfig
 
 
 def load(path: str, n: int = 0):
@@ -32,6 +33,8 @@ ap.add_argument("--sampling", action="store_true",
                 help="run sampling stability analysis")
 ap.add_argument("--injection", action="store_true",
                 help="run prompt injection detection (one + multi-turn)")  # ← Новый флаг
+ap.add_argument("--gcg", action="store_true",
+                help="run GCG adversarial suffix attack battery")
 ap.add_argument("--config", default="src/configs/general.yaml",
                 help="path to YAML config (default: src/configs/general.yaml)")
 
@@ -93,6 +96,13 @@ for ckpt in CHECKPOINTS:
         obf_result = obfuscation.run(model, harmful, config=obf_cfg)
         print(f"  obfuscation done in {time.time() - t0:.1f}s", flush=True)
         print("[obfuscation]      ", json.dumps(obf_result["summary"], indent=2), flush=True)
+
+    if args.gcg:
+        gcg_cfg = GCGAdversarialConfig.from_yaml(args.config)
+        t0 = time.time()
+        gcg_result = gcg_adversarial.run(model, harmful, config=gcg_cfg)
+        print(f"  gcg_adversarial done in {time.time() - t0:.1f}s", flush=True)
+        print("[gcg_adversarial]  ", json.dumps(gcg_result["summary"], indent=2), flush=True)
 
     print(flush=True)
 
