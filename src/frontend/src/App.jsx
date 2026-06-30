@@ -5,6 +5,7 @@ import ConfigSection from "./components/ConfigSection";
 import StatusDisplay from "./components/StatusDisplay";
 import ResultSection from "./components/ResultSection";
 import notificationSound from './public/notification.mp3';
+import RecentScans from './components/RecentScans';
 
 function App() {
   const [repo, setRepo] = useState("");
@@ -157,6 +158,7 @@ function App() {
                   toggleMetric={toggleMetric}
               />
           )}
+          <RecentScans />
         </main>
       </>
   );

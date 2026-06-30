@@ -83,9 +83,17 @@ def save_scan(repo: str, cache_key: str, result: dict) -> None:
 
 
 def list_scans() -> list[dict]:
-    """Most-recent-first list for the reports view: [{repo, verdict}, ...]."""
+    """Most-recent-first list for the reports view: [{id, repo, verdict}, ...]."""
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT repo, verdict_code FROM scans ORDER BY created_at DESC"
+            "SELECT id, repo, verdict_code FROM scans ORDER BY created_at DESC"
         ).fetchall()
-    return [{"repo": r[0], "verdict": r[1]} for r in rows]
+    return [{"id": r[0], "repo": r[1], "verdict": r[2]} for r in rows]
+
+def get_scan_by_id(scan_id: int) -> dict | None:
+    """Return the full report for a given scan ID, or None if not found."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT report FROM scans WHERE id = %s", (scan_id,)
+        ).fetchone()
+    return row[0] if row else None
