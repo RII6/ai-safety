@@ -77,3 +77,12 @@ class Model:
         with torch.no_grad():
             out = self.model.generate(**inputs, max_new_tokens=n, do_sample=False)
         return self.tokenizer.decode(out[0][inputs.input_ids.shape[1] :], skip_special_tokens=True)
+
+    def generate_sample(self, prompt, n=128, temperature=1.0):
+        """Sample one response at the given temperature (do_sample=True)."""
+        text = self._render(prompt)
+        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
+        with torch.no_grad():
+            out = self.model.generate(**inputs, max_new_tokens=n,
+                                      do_sample=True, temperature=temperature)
+        return self.tokenizer.decode(out[0][inputs.input_ids.shape[1] :], skip_special_tokens=True)

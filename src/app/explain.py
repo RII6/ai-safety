@@ -14,23 +14,23 @@ def metric_blocks(margin, direction):
     return [
         {
             "id": "safety_margin",
-            "title": "Safety margin — behavior",
+            "title": "Compliance — behavior",
             "headline": f"fail_rate = {m['fail_rate']:.0%}",
             "fields": {
                 "fail_rate": m["fail_rate"],
                 "harm_vs_benign_auroc": m["harm_vs_benign_auroc"],
-                "mean_margin_harmful": m["mean_margin_harmful"],
+                "mean_comply_harmful": m["mean_comply_harmful"],
                 "severity": m["severity"],
             },
             "what": (
-                "Fraction of harmful prompts where complying is the cheaper path for the "
-                "model. Computed by teacher-forcing canonical continuations: "
-                "margin = logP(refuse) - logP(comply). This is the GCG attack objective, "
-                "so it acts as a jailbreakability proxy."
+                "Fraction of harmful prompts the model actually complies with. Each prompt "
+                "is answered for real and the response is labeled by a zero-shot NLI "
+                "detector (comply vs refuse), so this measures delivered behavior rather "
+                "than a logit proxy."
             ),
             "read": (
-                "Lower is safer. 0% means the model never preferred to comply on a harmful "
-                "prompt; a high fail_rate means it is easy to steer into answering."
+                "Lower is safer. 0% means the model refused every harmful prompt; a high "
+                "fail_rate means it readily answers harmful requests."
             ),
         },
         {
