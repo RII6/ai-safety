@@ -14,6 +14,8 @@ const ConfigSection = ({
                            setScanInjection,
                            scanObfuscation,
                            setScanObfuscation,
+                           scanSampling,
+                           setScanSampling,
                        }) => {
     const [isGeneralOpen, setIsGeneralOpen] = useState(false);
     const [isInjectionOpen, setIsInjectionOpen] = useState(false);
@@ -127,6 +129,17 @@ const ConfigSection = ({
                 />
 
                 <ScanModuleCard
+                    id="m-sampling"
+                    title="Sampling Instability Analysis"
+                    description="Runs test scenarios across a customized temperature × top_p inference grid with N=20 runs per point. Calculates the Instability Score to detect alignment degradation."
+                    checked={scanSampling}
+                    onChange={setScanSampling}
+                    isOpen={isSamplingOpen}
+                    onToggle={() => setIsSamplingOpen(!isSamplingOpen)}
+                    statusBadge={{ label: 'LIVE', className: 'live' }}
+                />
+
+                <ScanModuleCard
                     id="m-leakage"
                     title="Memorization Extraction & System Leakage"
                     description="Implements the Carlini et al. (2021) method. Generates domain-specific seed prefixes and triggers beam search using a small reference model (Pythia-70m) to compute memorization scores."
@@ -136,19 +149,6 @@ const ConfigSection = ({
                     onChange={() => {}}
                     isOpen={isLeakageOpen}
                     onToggle={() => setIsLeakageOpen(!isLeakageOpen)}
-                    statusBadge={{ label: 'COMING SOON', className: 'soon' }}
-                />
-
-                <ScanModuleCard
-                    id="m-sampling"
-                    title="Sampling Instability Analysis"
-                    description="Runs test scenarios across a customized temperature × top_p inference grid with N=20 runs per point. Calculates the Instability Score to detect alignment degradation."
-                    isActive={false}
-                    isDisabled={true}
-                    checked={false}
-                    onChange={() => {}}
-                    isOpen={isSamplingOpen}
-                    onToggle={() => setIsSamplingOpen(!isSamplingOpen)}
                     statusBadge={{ label: 'COMING SOON', className: 'soon' }}
                 />
 

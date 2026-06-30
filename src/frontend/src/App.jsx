@@ -17,6 +17,7 @@ function App() {
   const [scanGeneral, setScanGeneral] = useState(true);
   const [scanInjection, setScanInjection] = useState(false);
   const [scanObfuscation, setScanObfuscation] = useState(false);
+  const [scanSampling, setScanSampling] = useState(false);
 
   let audioCtx = null;
 
@@ -92,6 +93,7 @@ function App() {
       if (scanGeneral) selectedModules.push("general");
       if (scanInjection) selectedModules.push("prompt_injections");
       if (scanObfuscation) selectedModules.push("obfuscation");
+      if (scanSampling) selectedModules.push("sampling");
 
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -114,7 +116,6 @@ function App() {
       } else {
         setStatus({ text: "", isError: false, visible: false });
         setResult(data);
-        // Звук после успешного ответа
         await playNotificationSound();
       }
     } catch (err) {
@@ -143,6 +144,8 @@ function App() {
               setScanInjection={setScanInjection}
               scanObfuscation={scanObfuscation}
               setScanObfuscation={setScanObfuscation}
+              scanSampling={scanSampling}
+              setScanSampling={setScanSampling}
           />
 
           <StatusDisplay

@@ -10,7 +10,7 @@ const ScanModuleCard = ({
                             onChange,
                             isOpen,
                             onToggle,
-                            statusBadge, // { label, className }
+                            statusBadge,
                         }) => {
     return (
         <div className={`scan-module-card ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}>

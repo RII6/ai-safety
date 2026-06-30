@@ -13,7 +13,8 @@ export const getColorClass = (key, value) => {
     if (isNaN(num)) return '';
 
     const [good, bad] = rule.thresholds;
-    if (key === 'fail_rate' || key === 'asr_conditional' || key === 'worst_case_bypass_rate') {
+    if (key === 'fail_rate' || key === 'asr_conditional' || key === 'worst_case_bypass_rate'
+        || key === 'worst_sampling_fail_rate') {
         if (num <= good) return rule.colors[0];
         if (num <= bad)  return rule.colors[1];
         return rule.colors[2];
