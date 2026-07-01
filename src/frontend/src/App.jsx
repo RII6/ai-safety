@@ -18,6 +18,7 @@ function App() {
   const [scanInjection, setScanInjection] = useState(false);
   const [scanObfuscation, setScanObfuscation] = useState(false);
   const [scanSampling, setScanSampling] = useState(false);
+  const [scanGcg, setScanGcg] = useState(false);
 
   let audioCtx = null;
 
@@ -94,6 +95,7 @@ function App() {
       if (scanInjection) selectedModules.push("prompt_injections");
       if (scanObfuscation) selectedModules.push("obfuscation");
       if (scanSampling) selectedModules.push("sampling");
+      if (scanGcg) selectedModules.push("gcg");
 
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -146,6 +148,8 @@ function App() {
               setScanObfuscation={setScanObfuscation}
               scanSampling={scanSampling}
               setScanSampling={setScanSampling}
+              scanGcg={scanGcg}
+              setScanGcg={setScanGcg}
           />
 
           <StatusDisplay

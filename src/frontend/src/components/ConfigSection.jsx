@@ -16,6 +16,8 @@ const ConfigSection = ({
                            setScanObfuscation,
                            scanSampling,
                            setScanSampling,
+                           scanGcg,
+                           setScanGcg,
                        }) => {
     const [isGeneralOpen, setIsGeneralOpen] = useState(false);
     const [isInjectionOpen, setIsInjectionOpen] = useState(false);
@@ -155,14 +157,13 @@ const ConfigSection = ({
                 <ScanModuleCard
                     id="m-gcg"
                     title="Greedy Coordinate Gradient (GCG) Attacks"
-                    description="Executes a gradient-based token optimization via Greedy Coordinate Gradient (GCG) directly on open weights."
-                    isActive={false}
-                    isDisabled={true}
-                    checked={false}
-                    onChange={() => {}}
+                    description="Appends known adversarial suffixes to each harmful prompt, generates a real response, and labels it with the zero-shot NLI detector (comply vs refuse). The attack success rate is the fraction of prompt × suffix attempts where the model complies, revealing how easily it can be forced into harmful compliance by adversarial suffixes."
+                    isActive={scanGcg}
+                    checked={scanGcg}
+                    onChange={setScanGcg}
                     isOpen={isGCDOpen}
                     onToggle={() => setIsGCDOpen(!isGCDOpen)}
-                    statusBadge={{ label: 'COMING SOON', className: 'soon' }}
+                    statusBadge={{ label: 'LIVE', className: 'live' }}
                 />
             </div>
 
