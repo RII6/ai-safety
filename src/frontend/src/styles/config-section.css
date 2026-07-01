@@ -1,0 +1,24 @@
+.config-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+.config-section h2 {
+    margin: 0 0 24px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+}
+
+.scan-modules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 32px;
+}

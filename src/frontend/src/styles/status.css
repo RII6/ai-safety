@@ -1,0 +1,20 @@
+.status {
+    margin-top: 24px;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+}
+.status.error { border-color: var(--red); color: var(--red); }
+
+.spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: -3px;
+    margin-right: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

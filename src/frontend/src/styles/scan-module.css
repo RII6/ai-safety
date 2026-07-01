@@ -1,0 +1,94 @@
+.scan-module-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.scan-module-card.active {
+    border-color: #5173eb;
+    background: linear-gradient(90deg, #1f2330 0%, #171a24 100%);
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.scan-module-card.disabled {
+    opacity: 0.45;
+}
+
+.card-header-clickable {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checkbox-label-wrapper label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.checkbox-label-wrapper input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+.badge-arrow-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.arrow-icon {
+    font-size: 10px;
+    color: var(--muted);
+    transition: transform 0.3s ease-in-out;
+}
+
+.arrow-icon.rotated {
+    transform: rotate(180deg);
+}
+
+.collapsible-content {
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out;
+}
+
+.card-desc {
+    margin: 12px 0 0 25px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+.status-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+.status-badge.live {
+    background: rgba(52, 211, 153, 0.12);
+    color: var(--green);
+    border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.status-badge.soon {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--gray);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}

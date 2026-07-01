@@ -14,3 +14,4 @@ wheels/
 
 # Scan-time generated test cases (reproducible from seed; cached locally)
 data/corpus/generated/
+src/scanner/judge.py

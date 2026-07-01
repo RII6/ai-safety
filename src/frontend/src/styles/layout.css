@@ -1,0 +1,36 @@
+header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 40px;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.user-profile {
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+main {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}

@@ -11,6 +11,10 @@ from huggingface_hub.utils import RepositoryNotFoundError
 
 from src.scanner import Model, empty_cache
 from src.scanner.modules import safety_margin, refusal_direction, verdict
+from src.scanner.modules import obfuscation
+from src.scanner.modules import gcg_adversarial
+from src.scanner.modules.prompt_injection import PromptInjectionConfig, run as run_injection
+from src.scanner.modules import sampling_stability
 
 from . import config, db, explain
 
@@ -39,12 +43,7 @@ def _load_corpus():
 
 
 def _generate_for_class(cls):
-    """Return GEN_N fresh prompts for *cls*, cached on disk by provider/class/n/seed.
-
-    Same (provider, class, n, seed) -> same prompts, so a scan is reproducible
-    and comparable; delete the cache file or bump SCAN_GEN_SEED for a new batch.
-    Any failure (no key, network, refusals) falls back to no extra prompts.
-    """
+    """Return GEN_N fresh prompts for *cls*, cached on disk by provider/class/n/seed."""
     config.GEN_CACHE.mkdir(parents=True, exist_ok=True)
     cache_file = config.GEN_CACHE / f"{config.GEN_PROVIDER}_{cls}_n{config.GEN_N}_seed{config.GEN_SEED}.jsonl"
     if cache_file.exists():
@@ -61,8 +60,8 @@ def _generate_for_class(cls):
             model=config.GEN_MODEL,
             seed=config.GEN_SEED,
         )
-    except Exception as e:  # never let generation break a scan
-        print(f"[scan] dynamic generation for '{cls}' failed, using static corpus: {e}", flush=True)
+    except Exception as e:
+        print(f"[scan] dynamic generation for '{cls}' failed: {e}", flush=True)
         return []
 
     cache_file.write_text(
@@ -73,7 +72,6 @@ def _generate_for_class(cls):
 
 
 def _generate_dynamic():
-    """Generate the scan-time prompt mix-in: {'harmful': [...], 'benign': [...]}."""
     if config.GEN_N <= 0:
         return {"harmful": [], "benign": []}
     classes = ["harmful", "benign"] if config.GEN_CLASS == "both" else [config.GEN_CLASS]
@@ -114,7 +112,6 @@ def _check_size(info):
 
 
 def _oid(sibling):
-    """Content id of a file: LFS sha256 for weight blobs, git blob id otherwise."""
     lfs = getattr(sibling, "lfs", None)
     if lfs is not None:
         sha = getattr(lfs, "sha256", None)
@@ -126,12 +123,6 @@ def _oid(sibling):
 
 
 def _cache_key(info, gen=None):
-    """Hash over weight-file contents plus the scan params that change the verdict.
-
-    Generated prompts are folded in (by content) so a dynamic scan stays
-    reproducible: same model + same generated set -> cache hit; a new set ->
-    a fresh report rather than a stale cached one.
-    """
     parts = sorted(
         f"{s.rfilename}:{_oid(s)}" for s in info.siblings if s.rfilename.endswith(_WEIGHT_EXT)
     )
@@ -143,13 +134,12 @@ def _cache_key(info, gen=None):
 
 
 def _merge(static, generated):
-    """Static corpus first, then de-duplicated dynamic prompts appended."""
     seen = {p.strip().lower() for p in static}
     extra = [p for p in generated if p.strip().lower() not in seen]
     return static + extra
 
 
-def _run_scan(repo, params, weight_bytes, gen):
+def _run_scan(repo, params, weight_bytes, gen, modules):
     harmful, benign = _load_corpus()
     harmful = _merge(harmful, gen.get("harmful", []))
     benign = _merge(benign, gen.get("benign", []))
@@ -158,12 +148,59 @@ def _run_scan(repo, params, weight_bytes, gen):
     try:
         margin = safety_margin.run(model, harmful, benign)
         direction = refusal_direction.run(model, harmful, benign)
+
+        injection_result = None
+        if "prompt_injections" in modules:
+            print("[DEBUG] Running prompt_injection module...", flush=True)
+            try:
+                inj_cfg = PromptInjectionConfig.from_yaml()
+                injection_result = run_injection(model, harmful, config=inj_cfg)
+                print("[DEBUG] prompt_injection completed", flush=True)
+            except Exception as e:
+                print(f"[ERROR] prompt_injection failed: {e}", flush=True)
+                injection_result = None
+
+        obfuscation_result = None
+        if "obfuscation" in modules:
+            obfuscation_result = obfuscation.run(
+                model, harmful,
+                config=obfuscation.ObfuscationConfig.from_yaml(str(config.ROOT / "configs" / "general.yaml"))
+            )
+
+        sampling_result = None
+        if "sampling" in modules:
+            try:
+                sampling_result = sampling_stability.run(
+                    model, harmful,
+                    config=sampling_stability.SamplingStabilityConfig.from_yaml(
+                        str(config.ROOT / "configs" / "general.yaml")
+                    )
+                )
+                print("[DEBUG] sampling_stability completed", flush=True)
+            except Exception as e:
+                print(f"[ERROR] sampling_stability failed: {e}", flush=True)
+                sampling_result = None
+
+        gcg_result = None
+        if "gcg" in modules:
+            try:
+                gcg_result = gcg_adversarial.run(
+                    model, harmful,
+                    config=gcg_adversarial.GCGAdversarialConfig.from_yaml(
+                        str(config.ROOT / "configs" / "general.yaml")
+                    )
+                )
+                print("[DEBUG] gcg_adversarial completed", flush=True)
+            except Exception as e:
+                print(f"[ERROR] gcg_adversarial failed: {e}", flush=True)
+                gcg_result = None
     finally:
         del model
         gc.collect()
         empty_cache(config.DEVICE)
 
     report = verdict.compute(margin, direction)
+
     meta = {
         "params": params,
         "weight_bytes": weight_bytes,
@@ -174,10 +211,16 @@ def _run_scan(repo, params, weight_bytes, gen):
         "elapsed_s": round(time.time() - t0, 1),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    return explain.build(repo, margin, direction, report, meta)
+
+    return explain.build(repo, margin, direction, report, meta,
+    injection=injection_result, obfuscation=obfuscation_result, sampling=sampling_result,
+    gcg=gcg_result)
 
 
-def scan(repo, force=False):
+def scan(repo, force=False, modules=None):
+    if modules is None:
+        modules = ["general"]
+
     repo = repo.strip()
     if not repo or repo.count("/") != 1:
         raise ScanError(400, "Enter a repo id like 'owner/model'.")
@@ -196,7 +239,7 @@ def scan(repo, force=False):
     if not _lock.acquire(blocking=False):
         raise ScanError(429, "A scan is already running. Try again in a moment.")
     try:
-        result = _run_scan(repo, params, weight_bytes, gen)
+        result = _run_scan(repo, params, weight_bytes, gen, modules)
     finally:
         _lock.release()
 

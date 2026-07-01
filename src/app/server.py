@@ -24,6 +24,7 @@ app = FastAPI(title="LLM Safety Scanner", lifespan=lifespan)
 class ScanRequest(BaseModel):
     repo: str
     force: bool = False
+    modules: list[str] = ["general"]
 
 
 @app.get("/api/health")
@@ -34,7 +35,7 @@ def health():
 @app.post("/api/scan")
 def run_scan(req: ScanRequest):
     try:
-        return scan(req.repo, force=req.force)
+        return scan(req.repo, force=req.force, modules=req.modules)
     except ScanError as e:
         return JSONResponse(status_code=e.status, content={"error": e.message})
 
@@ -42,6 +43,13 @@ def run_scan(req: ScanRequest):
 @app.get("/api/reports")
 def list_reports():
     return db.list_scans()
+
+@app.get("/api/reports/{scan_id}")
+def get_scan(scan_id: int):
+    report = db.get_scan_by_id(scan_id)
+    if report is None:
+        return JSONResponse(status_code=404, content={"error": "Scan not found"})
+    return report
 
 
 app.mount("/", StaticFiles(directory=STATIC, html=True), name="static")

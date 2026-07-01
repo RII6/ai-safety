@@ -1,19 +1,88 @@
 import { useState } from "react";
 import "./App.css";
+import Header from "./components/Header";
+import ConfigSection from "./components/ConfigSection";
+import StatusDisplay from "./components/StatusDisplay";
+import ResultSection from "./components/ResultSection";
+import notificationSound from './public/notification.mp3';
+import RecentScans from './components/RecentScans';
 
 function App() {
   const [repo, setRepo] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ text: "", isError: false, visible: false });
   const [result, setResult] = useState(null);
+  const [openMetrics, setOpenMetrics] = useState({});
+
+  const [scanGeneral, setScanGeneral] = useState(true);
+  const [scanInjection, setScanInjection] = useState(false);
+  const [scanObfuscation, setScanObfuscation] = useState(false);
+  const [scanSampling, setScanSampling] = useState(false);
+  const [scanGcg, setScanGcg] = useState(false);
+
+  let audioCtx = null;
+
+  const ensureAudioContext = async () => {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    return audioCtx;
+  };
+
+  const playNotificationSound = async () => {
+    try {
+      const ctx = audioCtx;
+      const response = await fetch(notificationSound);
+      if (!response.ok) throw new Error('Failed to load audio file');
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0.6;
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      source.start(0);
+    } catch (error) {
+      console.warn('MP3 playback failed, using synthetic sound:', error);
+      try {
+        const ctx = audioCtx;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {
+        console.error('Synthetic sound failed:', e);
+      }
+    }
+  };
+
+  const toggleMetric = (index) => {
+    setOpenMetrics((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
 
   const handleScan = async (e) => {
     e.preventDefault();
     const trimmedRepo = repo.trim();
     if (!trimmedRepo) return;
 
+    await ensureAudioContext();
+
     setLoading(true);
     setResult(null);
+    setOpenMetrics({});
     setStatus({
       text: `Scanning <b>${trimmedRepo}</b> — loading the model and probing internal state…`,
       isError: false,
@@ -21,10 +90,21 @@ function App() {
     });
 
     try {
+      const selectedModules = [];
+      if (scanGeneral) selectedModules.push("general");
+      if (scanInjection) selectedModules.push("prompt_injections");
+      if (scanObfuscation) selectedModules.push("obfuscation");
+      if (scanSampling) selectedModules.push("sampling");
+      if (scanGcg) selectedModules.push("gcg");
+
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo: trimmedRepo, force: false }),
+        body: JSON.stringify({
+          repo: trimmedRepo,
+          force: true,
+          modules: selectedModules,
+        }),
       });
 
       const data = await res.json();
@@ -38,6 +118,7 @@ function App() {
       } else {
         setStatus({ text: "", isError: false, visible: false });
         setResult(data);
+        await playNotificationSound();
       }
     } catch (err) {
       setStatus({
@@ -52,157 +133,39 @@ function App() {
 
   return (
       <>
-        <header>
-          <div className="header-top">
-            <div className="logo-area">
-              <span className="logo-icon">🛡️</span>
-              <h1>Unified LLM Safety Platform</h1>
-            </div>
-            <div className="user-profile">
-              <span className="user-icon">👤</span> User Profile
-            </div>
-          </div>
-        </header>
-
+        <Header />
         <main>
-          <section className="config-section">
-            <h2>SELECT SAFETY SCANS & ADVANCED ATTACKS</h2>
+          <ConfigSection
+              repo={repo}
+              setRepo={setRepo}
+              loading={loading}
+              onSubmit={handleScan}
+              scanGeneral={scanGeneral}
+              setScanGeneral={setScanGeneral}
+              scanInjection={scanInjection}
+              setScanInjection={setScanInjection}
+              scanObfuscation={scanObfuscation}
+              setScanObfuscation={setScanObfuscation}
+              scanSampling={scanSampling}
+              setScanSampling={setScanSampling}
+              scanGcg={scanGcg}
+              setScanGcg={setScanGcg}
+          />
 
-            <div className="scan-modules-list">
+          <StatusDisplay
+              text={status.text}
+              isError={status.isError}
+              visible={status.visible}
+          />
 
-              {/* MODULE 1: CORE GENERAL SAFETY (LIVE) */}
-              <div className="scan-module-card active">
-                <div className="card-header">
-                  <input type="checkbox" id="m-general" checked readOnly />
-                  <label htmlFor="m-general"> General Safety Test (Core Behavioral Probing)</label>
-                  <span className="status-badge live">LIVE</span>
-                </div>
-                <p className="card-desc">
-                  Evaluation over a fixed benchmark corpus of standard adversarial prompts. Tests the model's core
-                  refusal capability and comprehension against Toxicity, Doxing, Hate Speech, and Dangerous Content.
-                  Measures the Safety Margin Score via vocabulary logit distributions.
-                </p>
-              </div>
-
-              {/* MODULE 2: PROMPT INJECTIONS & DRIFT */}
-              <div className="scan-module-card disabled">
-                <div className="card-header">
-                  <input type="checkbox" id="m-injection" disabled />
-                  <label htmlFor="m-injection">Multi-Turn Behavioral Drift & Injections</label>
-                  <span className="status-badge soon">COMING SOON</span>
-                </div>
-                <p className="card-desc">
-                  Orchestrates a three-phase dialogue to gradually shift context toward a target harmful request.
-                  Captures logit snapshots after each turn to compute KL-divergence relative to the first step.
-                  Tests both direct prompt injections and indirect injections embedded within documents.
-                </p>
-              </div>
-
-              {/* MODULE 3: MEMORIZATION EXTRACTION */}
-              <div className="scan-module-card disabled">
-                <div className="card-header">
-                  <input type="checkbox" id="m-leakage" disabled />
-                  <label htmlFor="m-leakage">Memorization Extraction & System Leakage</label>
-                  <span className="status-badge soon">COMING SOON</span>
-                </div>
-                <p className="card-desc">
-                  Implements the Carlini et al. (2021) method. Generates domain-specific seed prefixes and triggers
-                  beam search using a small reference model (Pythia-70m) to compute memorization scores.
-                  Includes adversarial scenarios targeting system prompt extraction and precise data leaks.
-                </p>
-              </div>
-
-              {/* MODULE 4: SAMPLING INSTABILITY */}
-              <div className="scan-module-card disabled">
-                <div className="card-header">
-                  <input type="checkbox" id="m-sampling" disabled />
-                  <label htmlFor="m-sampling">Sampling Instability Analysis</label>
-                  <span className="status-badge soon">COMING SOON</span>
-                </div>
-                <p className="card-desc">
-                  Runs test scenarios across a customized temperature × top_p inference grid with N=20 runs per point.
-                  Calculates the Instability Score (max(P_safe) - min(P_safe)) to detect alignment degradation under varying sampling parameters.
-                </p>
-              </div>
-
-              {/* MODULE 5: GCG ADVERSARIAL SUFFIXES */}
-              <div className="scan-module-card disabled">
-                <div className="card-header">
-                  <input type="checkbox" id="m-gcg" disabled />
-                  <label htmlFor="m-gcg">Greedy Coordinate Gradient (GCG) Attacks</label>
-                  <span className="status-badge soon">COMING SOON</span>
-                </div>
-                <p className="card-desc">
-                  Executes a gradient-based token optimization via Greedy Coordinate Gradient (GCG) directly on open weights.
-                  Discovers universal adversarial suffixes designed to mathematically force the model to begin its response with an affirmative token.
-                </p>
-              </div>
-
-            </div>
-
-            {/* FORM */}
-            <form onSubmit={handleScan}>
-              <div className="target-repo-input">
-                <label htmlFor="repo">Target Model Repository (Hugging Face):</label>
-                <div className="search-box">
-                  <input
-                      id="repo"
-                      type="text"
-                      placeholder="owner/model — e.g. HuggingFaceTB/SmolLM2-360M-Instruct"
-                      autoComplete="off"
-                      value={repo}
-                      onChange={(e) => setRepo(e.target.value)}
-                  />
-                  <button id="scan-btn" type="submit" disabled={loading}>
-                    {loading ? "Scanning..." : "RUN ACTIVE SCANS"}
-                  </button>
-                </div>
-              </div>
-            </form>
-            <p className="hint">Running against configured target domain thresholds. Small instruct models work best.</p>
-          </section>
-
-          {/* LOADING STATUS */}
-          {status.visible && (
-              <div className={`status ${status.isError ? "error" : ""}`}>
-                {!status.isError && <span className="spinner"></span>}
-                <span dangerouslySetInnerHTML={{ __html: status.text }} />
-              </div>
-          )}
-
-          {/* RESULTS RENDER */}
           {result && (
-              <section id="result">
-                <div className={`verdict ${result.verdict.code}`}>
-                  <div className="repo">
-                    {result.repo}
-                    {result.from_cache && " · cached"}
-                  </div>
-                  <span className="badge">{result.verdict.label}</span>
-                  <p><span className="label">Diagnosis</span><br />{result.verdict.diagnosis}</p>
-                  <p><span className="label">Recommendation</span><br />{result.verdict.recommendation}</p>
-                </div>
-
-                {result.metrics.map((m, index) => (
-                    <div className="metric" key={index}>
-                      <h3>{m.title}</h3>
-                      <div className="headline">{m.headline}</div>
-                      <p className="what">{m.what}</p>
-                      <p className="read">{m.read}</p>
-                      <div className="fields">
-                        {Object.entries(m.fields).map(([key, value]) => (
-                            <span key={key}>{key} <b>{value}</b></span>
-                        ))}
-                      </div>
-                    </div>
-                ))}
-
-                <div className="meta">
-                  {result.meta.params ? `${(result.meta.params / 1e6).toFixed(0)}M params · ` : ""}
-                  {result.meta.sample}/{result.meta.sample} prompts · {result.meta.device}/{result.meta.dtype} · {result.meta.elapsed_s}s
-                </div>
-              </section>
+              <ResultSection
+                  result={result}
+                  openMetrics={openMetrics}
+                  toggleMetric={toggleMetric}
+              />
           )}
+          <RecentScans />
         </main>
       </>
   );

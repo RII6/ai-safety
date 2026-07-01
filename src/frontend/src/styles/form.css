@@ -1,0 +1,122 @@
+.target-repo-input {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+}
+
+.target-repo-input label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+}
+
+.search-box {
+    display: flex;
+    gap: 12px;
+}
+
+.custom-select-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.custom-select-wrapper input {
+    width: 100%;
+    padding: 14px 40px 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.custom-select-wrapper input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.select-arrow {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.dropdown-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+}
+
+.dropdown-item,
+.dropdown-item-highlighted {
+    padding: 10px 16px;
+    margin: 0;
+    border: none;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+    color: var(--text);
+    cursor: pointer;
+    background: transparent;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dropdown-item:hover {
+    background: var(--panel-2);
+}
+
+.dropdown-empty {
+    padding: 10px 16px;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+    font-style: italic;
+    line-height: 1.5;
+}
+
+.dropdown-list::-webkit-scrollbar {
+    width: 6px;
+}
+.dropdown-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.dropdown-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+#scan-btn {
+    padding: 0 24px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+#scan-btn:disabled { opacity: 0.5; cursor: default; }
+
+.hint {
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin: 12px 2px 0;
+}
